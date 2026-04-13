@@ -71,4 +71,71 @@ class Manager:
             )
         for tenant in tenants_in_apartment ] 
     
+
+    def get_annual_summary(self, year: int) -> dict:
+        """Generuje roczne zestawienie finansowe dla wszystkich mieszkań i lokatorów."""
+        total_costs = sum(bill.amount_pln for bill in self.bills if bill.settlement_year == year)
+        total_transfers = sum(t.amount_pln for t in self.transfers if t.settlement_year == year)
+        
+        return {
+            "year": year,
+            "total_costs_pln": total_costs,
+            "total_transfers_pln": total_transfers,
+            "balance_pln": total_transfers - total_costs
+        }
+
+    def get_debtors_report(self, year: int, month: int) -> dict:
+        """Zwraca słownik dłużników (imię i nazwisko -> kwota na minusie) dla danego okresu."""
+        debtors = {}
+        
+        for apt_key in self.apartments:
+            apt_settlement = self.get_settlement(apt_key, year, month)
+            if not apt_settlement:
+                continue
+                
+            tenant_settlements = self.create_tenants_settlements(apt_settlement)
+            if not tenant_settlements:
+                continue
+                
+            for ts in tenant_settlements:
+                tenant_key = next((k for k, v in self.tenants.items() if v.name == ts.tenant), None)
+                if not tenant_key:
+                    continue
+                    
+                paid = sum(t.amount_pln for t in self.transfers 
+                           if t.tenant == tenant_key and t.settlement_year == year and t.settlement_month == month)
+                
+                balance = paid - ts.total_due_pln
+                
+                if balance < 0:
+                    debtors[ts.tenant] = balance
+                    
+        return debtors
     
+    def get_tax(self, year: int, month: int, tax_rate: float) -> int:
+        """
+        Zwraca kwotę podatku (zaokrągloną do pełnych złotych) na podstawie wszystkich
+        przelewów wpłaconych w danym miesiącu rozliczeniowym.
+        """
+        total_income = sum(
+            t.amount_pln for t in self.transfers 
+            if t.settlement_year == year and t.settlement_month == month
+        )
+        return round(total_income * tax_rate)
+
+    def find_apartments_without_bills(self, year: int, month: int) -> list[str]:
+        """
+        Zwraca listę kluczy mieszkań (apartment_key), dla których w danym
+        miesiącu i roku rozliczeniowym nie wprowadzono żadnego rachunku.
+        """
+        apartments_with_bills = {
+            bill.apartment for bill in self.bills 
+            if bill.settlement_year == year and bill.settlement_month == month
+        }
+        
+        apartments_without_bills = [
+            apt_key for apt_key in self.apartments.keys() 
+            if apt_key not in apartments_with_bills
+        ]
+        
+        return apartments_without_bills
