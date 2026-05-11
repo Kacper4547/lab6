@@ -81,28 +81,26 @@ def display_specific_settlement(manager, apartment_key: str, year: int, month: i
 
 
 if __name__ == '__main__':
-    parameters = Parameters()
-    manager = Manager(parameters)
+    if len(sys.argv) != 4:
+        print("Blad. Uzycie: python main.py <klucz> <rok> <miesiac>")
+        sys.exit(1)
 
+    klucz = sys.argv[1]
+    rok = int(sys.argv[2])
+    miesiac = int(sys.argv[3])
 
-    if len(sys.argv) == 4:
-        arg_apartment_key = sys.argv[1]
+    zarzadca = Manager(Parameters())
+    rozliczenie = zarzadca.get_settlement(klucz, rok, miesiac)
+
+    if rozliczenie:
+        print(f"Mieszkanie: {rozliczenie.apartment}")
+        print(f"Okres: {rozliczenie.month}/{rozliczenie.year}")
+        print(f"Koszty calkowite: {rozliczenie.total_due_pln} PLN")
         
-        try:
-            arg_year = int(sys.argv[2])
-            arg_month = int(sys.argv[3])
-            
-            display_specific_settlement(manager, arg_apartment_key, arg_year, arg_month)
-            
-        except ValueError:
-            print("❌ Błąd: Rok i miesiąc muszą być liczbami całkowitymi!")
-            print("Poprawne użycie: python main.py <klucz_mieszkania> <rok> <miesiąc>")
-            
+        lokatorzy = zarzadca.create_tenants_settlements(rozliczenie)
+        if lokatorzy:
+            print("Rozliczenie lokatorow:")
+            for l in lokatorzy:
+                print(f"- {l.tenant}: {l.total_due_pln:.2f} PLN")
     else:
-        print("💡 Wskazówka: Możesz wygenerować raport dla konkretnego mieszkania, używając argumentów:")
-        print("   Przykład: python main.py apart-polanka 2025 1\n")
-        
-        display_apartments(manager)
-        display_tenants(manager)
-        
-    print(f"\n{'=' * 70}\n")
+        print("Brak danych.")

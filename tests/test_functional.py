@@ -95,3 +95,17 @@ def test_find_apartments_without_bills():
     assert len(missing) == 1
     assert "apart-2" in missing
     assert "apart-1" not in missing
+
+def test_suma_obciazen_lokatorow_zgadza_sie_z_kosztami():
+    zarzadca = Manager(Parameters())
+    
+    rozliczenie_mieszkania = zarzadca.get_settlement("apart-polanka", 2025, 1)
+    assert rozliczenie_mieszkania is not None
+    
+    rozliczenia_lokatorow = zarzadca.create_tenants_settlements(rozliczenie_mieszkania)
+    assert rozliczenia_lokatorow is not None
+    assert len(rozliczenia_lokatorow) > 0
+    
+    suma_obciazen = sum(rozliczenie.total_due_pln for rozliczenie in rozliczenia_lokatorow)
+    
+    assert suma_obciazen == pytest.approx(rozliczenie_mieszkania.total_due_pln)
